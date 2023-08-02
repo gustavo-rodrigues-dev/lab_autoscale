@@ -1,10 +1,11 @@
-package tests
+package test
 
 import (
-	"fmt"
-	"testing"
-
+	"github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 type subnet_cidr_block struct {
@@ -34,7 +35,12 @@ func terraformOptions(t *testing.T) *terraform.Options {
 				{
 					"cidr_block": "192.168.2.0/24",
 					"az":         "b",
-					"name":       "test-subnet-private-a",
+					"name":       "test-subnet-private-b",
+				},
+				{
+					"cidr_block": "192.168.3.0/24",
+					"az":         "a",
+					"name":       "test-subnet-restricted-a",
 				},
 			},
 		},
@@ -47,9 +53,36 @@ func TestNetwork(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, options)
 	defer terraform.Destroy(t, terraformOptions)
 	terraform.InitAndApply(t, terraformOptions)
+
+	// Validate vpc name
+	awsRegion := options.Vars["aws_region"].(string)
 	vpcName := terraform.Output(t, terraformOptions, "vpc_name")
-	fmt.Println(vpcName)
+	vpcId := terraform.Output(t, terraformOptions, "vpc_id")
+	publicSubnetIds := terraform.OutputList(t, terraformOptions, "public_subnet_ids")
+	restrictedSubnetIds := terraform.OutputList(t, terraformOptions, "restricted_subnet_ids")
+	privateSubnetIds := terraform.OutputList(t, terraformOptions, "private_subnet_ids")
+	subnets := aws.GetSubnetsForVpc(t, vpcId, awsRegion)
+
 	if vpcName != options.Vars["service_name"].(string)+"-vpc" {
 		t.Errorf("VPC name is not correct")
 	}
+
+	require.Equal(t, 3, len(subnets))
+
+	// iterate publicSubnetIds
+	for _, publicSubnetId := range publicSubnetIds {
+		assert.True(t, aws.IsPublicSubnet(t, publicSubnetId, awsRegion))
+	}
+
+	for _, privateSubnetId := range privateSubnetIds {
+		assert.False(t, aws.IsPublicSubnet(t, privateSubnetId, awsRegion))
+	}
+
+	for _, restrictedSubnetId := range restrictedSubnetIds {
+		assert.False(t, aws.IsPublicSubnet(t, restrictedSubnetId, awsRegion))
+	}
+
+	// Validate subnet names
+	// Validate subnet associations
+
 }

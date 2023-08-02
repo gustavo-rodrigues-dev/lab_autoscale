@@ -30,6 +30,10 @@ output "public_subnet_ids" {
   value = [for s in aws_subnet.this : s.id if length(regexall("public", s.tags.Name)) > 0]
 }
 
+output "restricted_subnet_ids" {
+  value = [for s in aws_subnet.this : s.id if length(regexall("restricted", s.tags.Name)) > 0]
+}
+
 output "private_subnet_ids" {
   value = [for s in aws_subnet.this : s.id if length(regexall("private", s.tags.Name)) > 0]
 }
@@ -42,6 +46,10 @@ output "public_route_table_id" {
   value = aws_route_table.public.id
 }
 
+output "restrict_route_table_id" {
+  value = aws_route_table.restrict.id
+}
+
 output "private_route_table_id" {
   value = aws_route_table.private.id
 }
@@ -50,6 +58,11 @@ output "public_route_table_association_ids" {
   value = aws_route_table_association.public[*].id
 }
 
-# output "private_route_table_association_ids" {
-#   value = aws_route_table_association.private[*].id
-# }
+output "restrict_route_table_association_ids" {
+  value = aws_route_table_association.restrict[*].id
+}
+
+output "private_route_table_association_ids" {
+  value = aws_route_table_association.private[*].id
+}
+
